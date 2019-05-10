@@ -1,0 +1,60 @@
+#!/bin/csh -f
+
+obj phase_divers
+
+# Take a sequence of out of focus and in focus images to get phase
+# diversity.
+
+#####
+# Global setup for all images
+#####
+# Put in the right ND filter
+rsh -l k2obsao k2aoserver modify -s ao OBSNNAME = 0.1trans
+rsh -l k2obsao k2aoserver modify -s ao OBHPAON = 0
+# Setup NIRC2
+camera narrow
+filt FeII
+slit clear
+grism clear
+subc 1024
+wait4ao off
+pupil open
+shutter open
+
+ls -l#####
+# Images
+#####
+# In Focus Image (24 sec each)
+sampmode 2
+tint 0.18
+coadd 50
+# Insert command to make sure the fiber is focused
+goi 3
+
+# Out of focus -2 mm (65 sec each)
+focusfiber -2
+sampmode 3 8
+tint 1.5
+coadd 20
+goi 3
+
+# Out of focus -4 mm (65 sec each)
+focusfiber -2
+sampmode 3 16
+tint 7
+coadd 6
+goi 3
+
+# Out of focus -6 mm (65 sec each)
+focusfiber -2
+sampmode 3 64
+tint 18
+coadd 2
+goi 3
+
+# Return 
+focusfiber 6
+
+
+
+

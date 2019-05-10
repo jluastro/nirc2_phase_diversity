@@ -1,0 +1,56 @@
+#!/bin/csh -f
+#+
+#
+# movefiber [X [pixels]] [Y [pixels]] 
+#
+# +X = move to the right; -X = move to the left
+# +Y = move up; -X = move down
+#
+# Boiler plate for "-h" support for command autohelp.
+
+
+
+if ("$1" == "-h") then
+    help $0
+    exit $status
+endif
+
+set mmtopix = 0.00723510
+
+alias MATH 'set \!:1 = `echo "\!:3-$" | bc -l`'
+
+
+if (${#argv} == 2) then
+  @ xpix=$1
+  @ ypix=$2
+
+  MATH xmm = $xpix * $mmtopix
+  MATH ymm = $ypix * $mmtopix
+
+  #modify -s ao Dtlp = 0
+  #modify -s ao Dmlp = 0
+
+  modify -s ao OBSFXRL = $ymm
+  modify -s ao OBSFYRL = $xmm
+  modify -s ao OBSFGORL = true
+
+  modify -s ao OBSFXRL = 0.0 
+  modify -s ao OBSFYRL = 0.0 
+  #need to fix this
+
+  #modify -s ao AOFMX = $ymm
+  #modify -s ao AOFMY = $xmm
+  #modify -s ao AOFMGO = true
+
+  #modify -s ao Dtlp = 1
+  #modify -s ao Dmlp = 1
+
+
+
+else         
+  echo "Usage: movefiber x [pixels] y [pixels]"
+endif        
+
+
+
+

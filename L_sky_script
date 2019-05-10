@@ -1,0 +1,71 @@
+#!/bin/csh -f
+#+
+#
+# L_sky_script
+#
+# Takes skies at a range of K-mirror angles.
+# One sky is taken every 1 degree.
+#
+#-
+
+camera narrow
+sampmode 2
+wait4ao off
+filt Lp
+tint  0.50
+coadds  30
+object lpsky
+shutter open
+echo "Starting Lp skies"
+rotate   57.5 stationary
+goi
+
+rotate   58.0 stationary
+goi
+
+rotate   58.5 stationary
+goi
+
+rotate   59.0 stationary
+goi
+
+rotate   59.5 stationary
+goi
+
+rotate   60.0 stationary
+goi
+
+rotate   60.5 stationary
+goi
+
+rotate   61.0 stationary
+goi
+
+rotate   61.5 stationary
+goi
+
+rotate   62.0 stationary
+goi
+
+rotate   62.5 stationary
+goi
+
+rotate   63.0 stationary
+goi
+
+rotate   63.5 stationary
+goi
+
+rotate   64.0 stationary
+goi
+
+rotate   64.5 stationary
+goi
+
+rotate   65.0 stationary
+goi
+
+echo "Finished Lp skies"
+playsound -d
+rotate 0
+wait4ao on

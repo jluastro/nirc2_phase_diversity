@@ -1,0 +1,34 @@
+#!/bin/csh -f
+
+obj phase_divers
+
+# Take a grid of out of focus and in focus images to get phase
+# diversity.
+# Start at position [100,100].
+
+#####
+# Setup NIRC2
+####
+
+#####
+# Images
+#####
+
+
+foreach j ( 1 2 3 4 5 6 7 8 9 )
+     set dx = `awk '(NR== '$j') {print $1}' array_pos`
+     set dy = `awk '(NR== '$j') {print $2}' array_pos`
+
+	movefiber $dx $dy
+	sleep 10
+	focusfiber -6
+	sleep 10
+	focusfiber 6
+	sleep 10
+
+
+	echo 'move to' $dx $dy
+
+
+end
+

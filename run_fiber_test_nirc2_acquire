@@ -1,0 +1,33 @@
+#!/bin/csh -f
+#+
+# run_fiber_test_nirc2_acquire
+
+obj phase_divers
+
+# Take a single in-focus image to get pointing position and fiber brightness
+# diversity.
+
+#####
+# Setup NIRC2
+####
+camera narrow
+filt FeII
+slit clear
+grism clear
+subc 1024
+wait4ao off
+pupil open
+shutter open
+
+#####
+# Image
+#####
+
+rsh -l k2obsao k2aoserver modify -s ao OBSNNAME = 0.1trans
+rsh -l k2obsao k2aoserver modify -s ao OBHPAON = 0
+
+# In Focus Image (65 sec each)
+sampmode 2
+tint 0.18
+coadd 1
+goi

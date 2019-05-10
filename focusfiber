@@ -1,0 +1,36 @@
+#!/bin/csh -f
+#+
+#
+# focusfiber [z mm]  
+#
+# +Z  moves fiber closer to instrument 
+# -Z movew fiber awary from instrument 
+#
+# Boiler plate for "-h" support for command autohelp.
+
+
+
+if ("$1" == "-h") then
+    help $0
+    exit $status
+endif
+
+
+
+
+if (${#argv} == 1) then
+  @ zFoc=$1
+
+
+  modify -s ao OBSFZRL = $zFoc
+  modify -s ao OBSFGORL = true
+
+  modify -s ao OBSFZRL = 0.0  
+
+else         
+  echo "Usage: focusFiber [z mm] "
+endif        
+
+
+
+

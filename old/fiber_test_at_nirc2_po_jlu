@@ -1,0 +1,73 @@
+#!/bin/csh -f
+#
+# fiber_test_at_nirc2_po_jlu PEAK_FLUX
+#
+#      PEAK_FLUX: The peak pixel flux (DN) of an in-focus fiber image with
+#                 tint=0.18 s, coadd=1, pupil=open, filt=feii, 
+#                 camera=narrow, NDfilter=0.1trans (ND3, 0.1%). 
+#
+
+obj phase_divers
+
+# Calculate the scaling factor on the integration times.
+tint_scale = 8000.0 / $2
+
+# Take a sequence of out of focus and in focus images to get phase
+# diversity.
+
+#####
+# Setup NIRC2
+####
+camera narrow
+filt FeII
+slit clear
+grism clear
+subc 1024
+wait4ao off
+pupil open
+shutter open
+
+#####
+# Images
+#####
+
+rsh -l k2obsao k2aoserver modify -s ao OBSNNAME = 0.1trans
+rsh -l k2obsao k2aoserver modify -s ao OBHPAON = 0
+
+# In Focus Image (65 sec each)
+sampmode 2
+tint 0.18
+coadd 10
+# Insert command to make sure the fiber is focused
+goi 3
+
+# Out of focus -2 mm (65 sec each)
+focusfiber -2
+sleep 3
+sampmode 3 2
+tint 2.0
+coadd 20
+goi 3
+
+# Out of focus -4 mm (65 sec each)
+focusfiber -2
+sleep 3
+sampmode 3 8
+tint 8.0
+coadd 5
+goi 3
+
+# Out of focus -6 mm (65 sec each)
+focusfiber -2
+sleep 3
+sampmode 3 16
+tint 16.0
+coadd 3
+goi 3
+
+# Return 
+focusfiber 6
+sleep 3
+
+rsh -l k2obsao k2aoserver modify -s ao OBSFNAME = optnirc2
+

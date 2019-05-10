@@ -1,0 +1,31 @@
+#!/bin/csh -f
+#assume I'm starting at lower left corner
+
+run_a_fiber_test_new
+movefiber 100 0
+sleep 10
+run_a_fiber_test_new
+movefiber 100 0
+sleep 10
+run_a_fiber_test_new
+movefiber 100 0
+sleep 10
+run_a_fiber_test_new
+movefiber 100 0
+sleep 10
+run_a_fiber_test_new
+movefiber 100 0
+sleep 10
+run_a_fiber_test_new
+movefiber 100 0
+sleep 10
+run_a_fiber_test_new
+movefiber 100 0
+sleep 10
+run_a_fiber_test_new
+movefiber 100 0
+sleep 10
+run_a_fiber_test_new
+
+
+#end
