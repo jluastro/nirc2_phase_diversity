@@ -140,12 +140,13 @@ shutter open
 
 # Set fiber parameters
 if ($position == "bkg") then
-    rsh -l k2obsao k2aoserver modify -s ao OBSNNAME = BLOCK
+    modify -s ao OBSNNAME = BLOCK
+    modify -s ao OBSWON = 0
     echo "Taking Background"
 else
-    rsh -l k2obsao k2aoserver modify -s ao OBSNNAME = nd3
+    modify -s ao OBSNNAME = nd3
 endif
-rsh -l k2obsao k2aoserver modify -s ao OBHPAON = 0
+modify -s ao OBHPAON = 0
 
 # Move fiber to the reference position
 set start_dx = `math $ref_posX - $in_fiberX`
@@ -170,18 +171,22 @@ set cur_nirc2x = $ref_posX
 set cur_nirc2y = $ref_posY
 
 foreach j ( 1 2 3 4 5 6 7 8 9 )
-     set dx = `awk '(NR== '$j') {print $1}' array_pos.txt`
-     set dy = `awk '(NR== '$j') {print $2}' array_pos.txt`
-     set cur_nirc2x = `math $cur_nirc2x + $dx`
-     set cur_nirc2y = `math $cur_nirc2y + $dy`
+    set dx = `awk '(NR== '$j') {print $1}' array_pos.txt`
+    set dy = `awk '(NR== '$j') {print $2}' array_pos.txt`
+    set cur_nirc2x = `math $cur_nirc2x + $dx`
+    set cur_nirc2y = `math $cur_nirc2y + $dy`
 
     movefiber $dx $dy
     sleep 5
 
     # In Focus Image (65 sec each)
-     set tint = `math 0.18 x $tint_scale`
-     set tint = `printf "%.2f" $tint`
-     printf "move by %4d %4d to NIRC2 pix = %4d %4d  with tint = %.2f in focus\n" \
+    set tint = `math 0.18 x $tint_scale`
+    set tint = `printf "%.2f" $tint`
+    if ($position != "bkg") then
+	modify -s ao OBSNNAME=nd3
+    endif
+    
+    printf "move by %4d %4d to NIRC2 pix = %4d %4d  with tint = %.2f in focus\n" \
         $dx $dy $cur_nirc2x $cur_nirc2y $tint
     sampmode 2
     tint $tint
@@ -189,42 +194,42 @@ foreach j ( 1 2 3 4 5 6 7 8 9 )
     goi 3
 
     # Out of focus -2 mm (65 sec each)
-    set tint = `math 1.8 x $tint_scale`
+    set tint = `math 0.18 x $tint_scale`
     set tint = `printf "%.2f" $tint`
     if ($position != "bkg") then
         focusfiber -2
-        sleep 4
+	modify -s ao OBSNNAME = nd2
     endif
-    rsh -l k2obsao k2aoserver modify -s ao OBSNNAME = nd2
-    sampmode 3 2
-    tint $tint
-    coadd 10
-    goi 3
-
-    # Out of focus -4 mm (65 sec each)
-    set tint = `math 1.8 x $tint_scale`
-    set tint = `printf "%.2f" $tint`
-    if ($position != "bkg") then
-        focusfiber -2
-        sleep 4
-    endif
-    rsh -l k2obsao k2aoserver modify -s ao OBSNNAME = nd2
-    sampmode 3 8
+    sleep 10
+    sampmode 2
     tint $tint
     coadd 20
     goi 3
 
-    # Out of focus -6 mm (65 sec each)
-    set tint = `math 1.8 x $tint_scale`
+    # Out of focus -4 mm (65 sec each)
+    set tint = `math 0.72 x $tint_scale`
     set tint = `printf "%.2f" $tint`
     if ($position != "bkg") then
         focusfiber -2
+	modify -s ao OBSNNAME = nd2
         sleep 4
     endif
-    rsh -l k2obsao k2aoserver modify -s ao OBSNNAME = nd1
-    sampmode 3 16
+    sampmode 3 2
     tint $tint
-    coadd 10
+    coadd 5
+    goi 3
+
+    # Out of focus -6 mm (65 sec each)
+    set tint = `math 0.18 x $tint_scale`
+    set tint = `printf "%.2f" $tint`
+    if ($position != "bkg") then
+        focusfiber -2
+	modify -s ao OBSNNAME = nd1
+    endif
+    sleep 10
+    sampmode 2
+    tint $tint
+    coadd 3
     goi 3
 
     # Return 
@@ -239,13 +244,14 @@ foreach j ( 1 2 3 4 5 6 7 8 9 )
 end
 
 # Unblock the fiber if we were taking backgrounds.
-if ($position == "bkg") then
-    rsh -l k2obsao k2aoserver modify -s ao OBSNNAME = nd3
-endif
+modify -s ao OBSNNAME = nd3
+modify -s ao OBSWON = 1
+
+sleep 10
 
 # Move the fiber back to the optical axis of NIRC2 at the end.
 if (($position != "single") || ($position != "bkg")) then
-    rsh -l k2obsao k2aoserver modify -s ao OBSFNAME = nirc2
+    modify -s ao OBSFNAME = nirc2
 endif
 
 
