@@ -1,0 +1,251 @@
+#!/bin/csh -f
+#+
+# run_fiber_test peak_flux cur_posX cur_posY grid_choice
+#
+# Takes a 3 x 3 grid of phase diversity measurements over the NIRC2 narrow camera
+# field of view. Each position takes approximately 8 minutes to complete and the
+# entire script will take ~81 minutes.
+#
+# Before starting this script, run
+#
+#     run_fiber_test_nirc2_acquire
+#
+# and record
+#   1. flux in the peak pixel (in DN) on the in-focus fiber
+#   2. the X position of the in-focus fiber
+#   3. the Y position of the in-focus fiber
+#
+# You will need to be in /home/nirc2eng/vis/amg/phase_diversity/ to run the script
+# as it references array_pos.txt
+#
+# Parameters
+# ----------
+#     peak_flux:   Flux of the peak pixel (in DN) of the in-focus fiber
+#     cur_posX:    The current X position of the fiber on the NIRC2 narrow camera.
+#     cur_posY:    The current Y position of the fiber on the NIRC2 narrow camera.
+#     grid_choice: Grid position from one of "pos1" "pos2" "pos3"... "pos9"
+#                  OR "center" OR "single" OR "bkg".
+#                  Note that "center" or "single" will only do the first line of 
+#                  array_pos.txt, which is 0, 0 offsets.
+#                  Note that "bkg" will take a series of exposures without moving
+#                  the fiber but with the fiber blocked.
+#
+# Grid Choice Details
+# -------------------
+# Each 3 x 3 grid will have a separation of 310 NIRC2 pixels between each
+# point in the grid. In order to fill up the entire NIRC2 field of view
+# with a final 9 x 9 grid of points, this script must be run 9 times with 
+# different starting positions.
+# 
+# The patter of the grid starting position is
+#
+#   pos7     pos8     pos9
+#
+#   pos4     pos5     pos6
+#
+#   pos1     pos2     pos3
+#
+# After reaching the start position, the script will do its dithers according to array_pos.txt.
+# Testing with syncheck.
+##------------
+## Updated 2019-05-10 - A. Ciurlo
+## Test to make process faster (J. Lyke) by changinf filter
+## use nd3 instead of 0.1trans
+         
+# Boiler plate for "-h" support for command autohelp.
+if ("$1" == "-h") then
+   help $0
+   exit $status
+endif
+
+# Set input variables to useful names
+set peak_flux = $1
+set in_fiberX = $2
+set in_fiberY = $3
+set position = $4
+
+# NIRC2 reference position for lower-left corner of grid in pos1
+set ref_posX = 100
+set ref_posY = 100
+set ref_tint_flux = 8000
+
+# If the fiber is too bright, throw an error.
+# Brightness limit is 10,000 DN
+if ($peak_flux > 10000) then
+    echo "PROBLEM ... fiber is too bright"
+    exit $status
+endif
+
+# Define the positions.
+if ($position == "pos1") then
+    set ref_posX = `math $ref_posX + 0`
+    set ref_posY = `math $ref_posY + 0`
+endif
+if ($position == "pos2") then
+    set ref_posX = `math $ref_posX + 103`
+    set ref_posY = `math $ref_posY + 0`
+endif
+if ($position == "pos3") then
+    set ref_posX = `math $ref_posX + 206`
+    set ref_posY = `math $ref_posY + 0`
+endif
+if ($position == "pos4") then
+    set ref_posX = `math $ref_posX + 0`
+    set ref_posY = `math $ref_posY + 103`
+endif
+if ($position == "pos5") then
+    set ref_posX = `math $ref_posX + 103`
+    set ref_posY = `math $ref_posY + 103`
+endif
+if ($position == "pos6") then
+    set ref_posX = `math $ref_posX + 206`
+    set ref_posY = `math $ref_posY + 103`
+endif
+if ($position == "pos7") then
+    set ref_posX = `math $ref_posX + 0`
+    set ref_posY = `math $ref_posY + 206`
+endif
+if ($position == "pos8") then
+    set ref_posX = `math $ref_posX + 103`
+    set ref_posY = `math $ref_posY + 206`
+endif
+if ($position == "pos9") then
+    set ref_posX = `math $ref_posX + 206`
+    set ref_posY = `math $ref_posY + 206`
+endif
+if ($position == "center") then
+    set ref_posX = 512
+    set ref_posY = 512
+endif
+if ($position == "single") then
+    set ref_posX = $in_fiberX
+    set ref_posY = $in_fiberY
+endif
+if ($position == "bkg") then
+    set ref_posX = $in_fiberX
+    set ref_posY = $in_fiberY
+endif
+echo "Starting Position:" $ref_posX $ref_posY
+
+# Set NIRC2 parameters
+obj phase_divers
+camera narrow
+filt Brgamma
+slit clear
+grism clear
+subc 1024
+wait4ao off
+pupil open
+shutter open
+
+# Set fiber parameters
+if ($position == "bkg") then
+    rsh -l k2obsao k2aoserver modify -s ao OBSNNAME = BLOCK
+    echo "Taking Background"
+else
+    rsh -l k2obsao k2aoserver modify -s ao OBSNNAME = nd3
+endif
+rsh -l k2obsao k2aoserver modify -s ao OBHPAON = 0
+
+# Move fiber to the reference position
+set start_dx = `math $ref_posX - $in_fiberX`
+set start_dy = `math $ref_posY - $in_fiberY`
+echo "Deltas to Start Position: " $start_dx $start_dy
+echo "    (moving fiber to start pos)"
+movefiber $start_dx $start_dy
+sleep 10
+
+# Scale the integration time. We have already
+# checked for saturation... but enforce tint>=1.
+if ($peak_flux > $ref_tint_flux) then
+    set tint_scale = 1
+else
+    set tint_scale = `math $ref_tint_flux / $peak_flux`
+endif
+printf "tint scale: %.2f\n" $tint_scale
+
+
+# Keep track of the current NIRC2 pixel position
+set cur_nirc2x = $ref_posX
+set cur_nirc2y = $ref_posY
+
+foreach j ( 1 2 3 4 5 6 7 8 9 )
+     set dx = `awk '(NR== '$j') {print $1}' array_pos.txt`
+     set dy = `awk '(NR== '$j') {print $2}' array_pos.txt`
+     set cur_nirc2x = `math $cur_nirc2x + $dx`
+     set cur_nirc2y = `math $cur_nirc2y + $dy`
+
+    movefiber $dx $dy
+    sleep 5
+
+    # In Focus Image (65 sec each)
+     set tint = `math 0.18 x $tint_scale`
+     set tint = `printf "%.2f" $tint`
+     printf "move by %4d %4d to NIRC2 pix = %4d %4d  with tint = %.2f in focus\n" \
+        $dx $dy $cur_nirc2x $cur_nirc2y $tint
+    sampmode 2
+    tint $tint
+    coadd 10
+    goi 3
+
+    # Out of focus -2 mm (65 sec each)
+    set tint = `math 1.8 x $tint_scale`
+    set tint = `printf "%.2f" $tint`
+    if ($position != "bkg") then
+        focusfiber -2
+        sleep 4
+    endif
+    rsh -l k2obsao k2aoserver modify -s ao OBSNNAME = nd3
+    sampmode 3 2
+    tint $tint
+    coadd 10
+    goi 3
+
+    # Out of focus -4 mm (65 sec each)
+    set tint = `math 1.0 x $tint_scale`
+    set tint = `printf "%.2f" $tint`
+    if ($position != "bkg") then
+        focusfiber -2
+        sleep 4
+    endif
+    rsh -l k2obsao k2aoserver modify -s ao OBSNNAME = nd2
+    sampmode 3 8
+    tint $tint
+    coadd 20
+    goi 3
+
+    # Out of focus -6 mm (65 sec each)
+    set tint = `math 1.8 x $tint_scale`
+    set tint = `printf "%.2f" $tint`
+    if ($position != "bkg") then
+        focusfiber -2
+        sleep 4
+    endif
+    rsh -l k2obsao k2aoserver modify -s ao OBSNNAME = nd2 
+    sampmode 3 16
+    tint $tint
+    coadd 10
+    goi 3
+
+    # Return 
+    if ($position != "bkg") then
+        focusfiber 6
+        sleep 10
+    endif
+
+    if (($position == "center") || ($position == "single") || ($position == "bkg")) then
+       break
+    endif
+end
+
+# Unblock the fiber if we were taking backgrounds.
+if ($position == "bkg") then
+    rsh -l k2obsao k2aoserver modify -s ao OBSNNAME = nd3
+endif
+
+# Move the fiber back to the optical axis of NIRC2 at the end.
+if (($position != "single") || ($position != "bkg")) then
+    rsh -l k2obsao k2aoserver modify -s ao OBSFNAME = pws
+endif
+
+
